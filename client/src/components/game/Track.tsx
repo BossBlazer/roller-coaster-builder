@@ -35,8 +35,8 @@ export function Track() {
     const railData: { point: THREE.Vector3; tilt: number; tangent: THREE.Vector3; normal: THREE.Vector3 }[] = [];
     const numSamples = Math.max(trackPoints.length * 20, 100);
     
-    // Hybrid orientation: use world-up projection for horizontal motion,
-    // parallel transport only for vertical loop sections
+    // Smooth blended orientation: blend between world-up and transported-up
+    // based on how vertical the tangent is
     const worldUp = new THREE.Vector3(0, 1, 0);
     let prevUp = worldUp.clone();
     
@@ -46,33 +46,36 @@ export function Track() {
       const tangent = curve.getTangent(t).normalize();
       const tilt = interpolateTilt(trackPoints, t, isLooped);
       
-      // Check how vertical the tangent is
-      const verticalness = Math.abs(tangent.y);
+      // Compute world-up based orientation
+      const worldDot = worldUp.dot(tangent);
+      const worldBasedUp = worldUp.clone().sub(tangent.clone().multiplyScalar(worldDot));
+      const worldUpValid = worldBasedUp.length() > 0.1;
+      if (worldUpValid) worldBasedUp.normalize();
+      
+      // Compute transport-based orientation
+      const transportDot = prevUp.dot(tangent);
+      const transportedUp = prevUp.clone().sub(tangent.clone().multiplyScalar(transportDot));
+      const transportValid = transportedUp.length() > 0.01;
+      if (transportValid) transportedUp.normalize();
       
       let up: THREE.Vector3;
       
-      if (verticalness < 0.95) {
-        // Mostly horizontal: project world up onto plane perpendicular to tangent
-        // This prevents banking from lateral movement
-        const dot = worldUp.dot(tangent);
-        up = worldUp.clone().sub(tangent.clone().multiplyScalar(dot));
-        if (up.length() > 0.01) {
-          up.normalize();
-        } else {
-          up = prevUp.clone();
-        }
+      if (worldUpValid && transportValid) {
+        // Blend based on how vertical the tangent is
+        // More vertical = more weight on transported up
+        const verticalness = Math.abs(tangent.y);
+        const blendFactor = Math.min(1, verticalness * 1.5); // 0 = world-up, 1 = transported
+        
+        up = worldBasedUp.clone().lerp(transportedUp, blendFactor).normalize();
+      } else if (worldUpValid) {
+        up = worldBasedUp;
+      } else if (transportValid) {
+        up = transportedUp;
       } else {
-        // Near vertical: use parallel transport from previous up
-        const dot = prevUp.dot(tangent);
-        up = prevUp.clone().sub(tangent.clone().multiplyScalar(dot));
-        if (up.length() > 0.01) {
-          up.normalize();
-        } else {
-          // Fallback for degenerate case
-          up.set(1, 0, 0);
-          const d = up.dot(tangent);
-          up.sub(tangent.clone().multiplyScalar(d)).normalize();
-        }
+        // Fallback
+        up = new THREE.Vector3(1, 0, 0);
+        const d = up.dot(tangent);
+        up.sub(tangent.clone().multiplyScalar(d)).normalize();
       }
       
       prevUp.copy(up);
