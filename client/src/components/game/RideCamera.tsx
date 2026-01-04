@@ -117,6 +117,24 @@ export function RideCamera() {
       const d2 = upVector.dot(tangent);
       upVector.sub(tangent.clone().multiplyScalar(d2)).normalize();
     }
+    
+    // Check if this track point is inside a loop (has loopMeta)
+    const totalPoints = trackPoints.length;
+    const approxPointIndex = Math.floor(newProgress * (totalPoints - 1));
+    const currentTrackPoint = trackPoints[Math.min(approxPointIndex, totalPoints - 1)];
+    const isInLoop = currentTrackPoint?.loopMeta !== undefined;
+    
+    // Prevent up vector inversion on non-loop sections
+    // On flat/normal track, the up vector should always have positive Y component
+    if (!isInLoop) {
+      // Check if up vector has flipped (negative Y on relatively flat track)
+      const tangentSteepness = Math.abs(tangent.y);
+      if (tangentSteepness < 0.7 && upVector.y < 0) {
+        // Flip the up vector back to correct orientation
+        upVector.negate();
+      }
+    }
+    
     previousUp.current.copy(upVector);
     
     // Apply bank/tilt by rotating up vector around the tangent
