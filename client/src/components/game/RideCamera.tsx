@@ -167,32 +167,32 @@ export function RideCamera() {
     const bankQuat = new THREE.Quaternion().setFromAxisAngle(tangent, -previousRoll.current);
     const bankedUp = upVector.clone().applyQuaternion(bankQuat);
     
-    // Compute right vector from banked up and tangent (up × forward = right in right-handed system)
-    const rightVector = new THREE.Vector3().crossVectors(bankedUp, tangent).normalize();
-    
-    // Recompute up to ensure orthogonality (forward × right = up)
-    const finalUp = new THREE.Vector3().crossVectors(tangent, rightVector).normalize();
-    
     // Calculate slope intensity for thrill effects (0 = flat, 1 = straight down)
     const slopeIntensity = Math.max(0, -tangent.y);
     
     // On steep drops, pitch camera down slightly to see track ahead
-    // Max pitch offset of ~15 degrees when going straight down
     const targetPitchOffset = slopeIntensity * 0.25;
     previousPitchOffset.current = previousPitchOffset.current + (targetPitchOffset - previousPitchOffset.current) * CAMERA_LERP;
     
-    // Apply pitch by rotating the look direction down (around right vector)
-    const pitchQuat = new THREE.Quaternion().setFromAxisAngle(rightVector, previousPitchOffset.current);
+    // Apply pitch by rotating around the right vector (computed from banked up × tangent)
+    const tempRight = new THREE.Vector3().crossVectors(bankedUp, tangent).normalize();
+    const pitchQuat = new THREE.Quaternion().setFromAxisAngle(tempRight, previousPitchOffset.current);
     const pitchedTangent = tangent.clone().applyQuaternion(pitchQuat);
-    const pitchedUp = finalUp.clone().applyQuaternion(pitchQuat);
+    const pitchedUp = bankedUp.clone().applyQuaternion(pitchQuat);
     
-    // Camera position: on track + height along final up
-    const cameraOffset = finalUp.clone().multiplyScalar(CAMERA_HEIGHT);
+    // Camera position: on track + height along banked up (before pitch)
+    const cameraOffset = bankedUp.clone().multiplyScalar(CAMERA_HEIGHT);
     const targetCameraPos = position.clone().add(cameraOffset);
     
-    // Build rotation matrix from basis vectors with pitched look direction
+    // Build a proper right-handed basis AFTER pitch is applied
+    // Camera looks down -Z, so zAxis = -forward
+    const zAxis = pitchedTangent.clone().negate();
+    const xAxis = new THREE.Vector3().crossVectors(pitchedUp, zAxis).normalize();
+    const yAxis = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
+    
+    // Build rotation matrix from basis vectors
     const rotationMatrix = new THREE.Matrix4();
-    rotationMatrix.makeBasis(rightVector, pitchedUp, pitchedTangent.clone().negate());
+    rotationMatrix.makeBasis(xAxis, yAxis, zAxis);
     const targetQuat = new THREE.Quaternion().setFromRotationMatrix(rotationMatrix);
     
     // Dynamic FOV: increase on steep drops for enhanced thrill (75 base, up to 90 on drops)
