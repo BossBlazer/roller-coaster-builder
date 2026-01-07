@@ -85,6 +85,9 @@ export function Track() {
       // Check if we're in a loop segment
       const loopInfo = getLoopMetaAt(t);
       
+      // Track if previous sample was in a loop
+      const wasInLoop = i > 0 && getLoopMetaAt((i - 1) / numSamples) !== null;
+      
       if (loopInfo && loopInfo.meta) {
         // Use COMPLETE reference frame from loop metadata - including tangent!
         const meta = loopInfo.meta;
@@ -114,6 +117,22 @@ export function Track() {
         prevTangent.copy(refTangent);
         continue; // Skip the normal push at end of loop
       } else {
+        // If we just exited a loop, reseed parallel transport from actual spline values
+        if (wasInLoop) {
+          // Reseed prevTangent with actual spline tangent to prevent seam
+          prevTangent.copy(tangent);
+          // Reseed prevUp: project previous up onto plane perpendicular to new tangent
+          const upDot = prevUp.dot(tangent);
+          prevUp.sub(tangent.clone().multiplyScalar(upDot));
+          if (prevUp.length() > 0.001) {
+            prevUp.normalize();
+          } else {
+            // Fallback
+            prevUp.set(0, 1, 0);
+            const d = prevUp.dot(tangent);
+            prevUp.sub(tangent.clone().multiplyScalar(d)).normalize();
+          }
+        }
         // Standard parallel transport for non-loop sections
         if (i === 0) {
           up = prevUp.clone();

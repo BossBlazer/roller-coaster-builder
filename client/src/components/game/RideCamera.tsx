@@ -138,18 +138,21 @@ export function RideCamera() {
     
     lastProgress.current = newProgress;
     
-    // Apply track tilt rotation around tangent axis
-    const tilt = getTrackTiltAtProgress(trackPoints, newProgress, isLooped);
-    const tiltRad = (tilt * Math.PI) / 180;
-    const upVector = transportedUp.current.clone().applyAxisAngle(tangent, tiltRad);
+    // Use un-tilted up vector for camera POSITION (keeps camera centered on track)
+    const baseUpVector = transportedUp.current.clone();
     
-    // Camera positioned directly on track with small height offset
+    // Camera positioned directly on track centerline with height offset
+    // Using base up vector (no tilt) ensures camera stays centered
     const cameraHeight = 1.2;
-    const cameraOffset = upVector.clone().multiplyScalar(cameraHeight);
+    const cameraOffset = baseUpVector.clone().multiplyScalar(cameraHeight);
     const targetCameraPos = position.clone().add(cameraOffset);
     
+    // Apply track tilt only for camera ORIENTATION (not position)
+    const tilt = getTrackTiltAtProgress(trackPoints, newProgress, isLooped);
+    const tiltRad = (tilt * Math.PI) / 180;
+    const orientationUp = baseUpVector.clone().applyAxisAngle(tangent, tiltRad);
+    
     // Look directly down the track - use tangent direction for look target
-    // This ensures we always look straight down the track
     const lookDistance = 10;
     const targetLookAt = position.clone().add(tangent.clone().multiplyScalar(lookDistance));
     
@@ -159,9 +162,8 @@ export function RideCamera() {
     
     camera.position.copy(previousCameraPos.current);
     
-    // Set camera's up vector to match the transported up before lookAt
-    // This ensures the camera stays "upside down" when in loops
-    camera.up.copy(upVector);
+    // Set camera's up vector for orientation (includes tilt for proper roll feel)
+    camera.up.copy(orientationUp);
     camera.lookAt(previousLookAt.current);
   });
   
