@@ -31,15 +31,15 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npx vite build --base=/roller-coaster-builder/ --outDir=dist
+        run: npx vite build --base=/roller-coaster-builder/
         env:
           NODE_ENV: production
 
       - name: Copy public assets
-        run: cp -r client/public/* dist/
+        run: cp -r client/public/* dist/public/
 
       - name: Add .nojekyll
-        run: touch dist/.nojekyll
+        run: touch dist/public/.nojekyll
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -47,7 +47,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: dist/public
 
   deploy:
     environment:
