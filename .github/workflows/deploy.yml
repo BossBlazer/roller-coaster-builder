@@ -31,7 +31,7 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npx vite build --base=/roller-coaster-builder/
+        run: npx vite build --base=/${{ github.event.repository.name }}/
         env:
           NODE_ENV: production
 
