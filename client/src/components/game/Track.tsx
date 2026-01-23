@@ -344,16 +344,20 @@ export function Track() {
     ]);
   }
   
+  // Choose rail color based on day/night mode
+  // Day: bright red, Night: cooler purple glow (adjust hexes if you prefer different colors)
+  const railColor = isNightMode ? "#AA66FF" : "#ff4444";
+  
   return (
     <group>
       <Line
         points={leftRail}
-        color="#ff4444"
+        color={railColor}
         lineWidth={4 * TRACK_SCALE}
       />
       <Line
         points={rightRail}
-        color="#ff4444"
+        color={railColor}
         lineWidth={4 * TRACK_SCALE}
       />
       
@@ -396,7 +400,7 @@ export function Track() {
         const crossSize = 0.06 * TRACK_SCALE;
         
         return (
-          <group key={`wood-${i}`}>
+          <group key={`wood-${i}`}> 
             <mesh position={[leftLegX, height / 2, leftLegZ]}>
               <boxGeometry args={[legSize, height, legSize]} />
               <meshStandardMaterial color="#8B5A2B" />
@@ -407,7 +411,7 @@ export function Track() {
             </mesh>
             
             {height > 1.5 && (
-              <>
+              <> 
                 {/* Horizontal braces at multiple heights */}
                 <mesh 
                   position={[pos.x, height * 0.2, pos.z]} 
@@ -434,7 +438,7 @@ export function Track() {
             )}
             
             {height > 2 && (
-              <>
+              <> 
                 {/* X-pattern diagonal cross braces */}
                 <mesh 
                   position={[pos.x, height * 0.35, pos.z]} 
@@ -454,7 +458,7 @@ export function Track() {
             )}
             
             {height > 4 && (
-              <>
+              <> 
                 {/* Additional X-pattern for taller supports */}
                 <mesh 
                   position={[pos.x, height * 0.65, pos.z]} 
@@ -486,7 +490,7 @@ export function Track() {
         const color = colors[i % colors.length];
         
         return (
-          <group key={`light-${i}`}>
+          <group key={`light-${i}`}> 
             <mesh position={[leftX, pos.y + 0.1, leftZ]}>
               <sphereGeometry args={[0.3 * TRACK_SCALE, 6, 6]} />
               <meshBasicMaterial color={color} />
